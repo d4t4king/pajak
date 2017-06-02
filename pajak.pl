@@ -80,6 +80,7 @@ while (scalar(@new_urls) > 0) {
 			}
 		}
 	}
+	print scalar(keys(%emails))." email addresses harvested so far.\n";
 }
 
 ###############################################################################
