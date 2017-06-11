@@ -88,30 +88,26 @@ while (scalar(keys(%new_urls)) > 0) {
 	my $repack = uri_join($scheme, $auth, $path, $query, $frag);
 	use warnings;
 	#print colored("$repack\n", "bright_yellow");
-	eval { $mech->get($thisurl); };
+	eval { $mech->get($repack); };
 	if ($mech->success) {
-		$processed_urls{$thisurl}++;
+		$processed_urls{$repack}++;
 		# get all the links
-		my @links = $mech->find_all_links();
+		my @links = $mech->links();
 		if ($verbose) { print "Got ".scalar(@links)." links from URL.\n"; }
-		foreach my $link ( @links ) {
-			print $link->url."\n" if ($verbose);
-			if ($link->url =~ /^\//) {
-				# skip same-page links
-				next if ($link->url =~ /^\#/);
-				# skip "root" links
-				next if ($link->url =~ /^\/$/);
-				$new_urls{$link->base."".$link->url}++;
-			} else {
-				$new_urls{$link->url}++;
-			}
-		}
-		if ($verbose) { print scalar(keys(%new_urls))." new URLs after processing.\n"; }
 		# get all the emails
-		foreach my $line ( $mech->content ) {
-			if ($line =~ /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/) {
+		my @htmllines = split(/(\r\n?|\n)/, $mech->content);
+		print colored("Got ".scalar(@htmllines)." lines after split.\n", "cyan");
+		foreach my $line ( @htmllines ) {
+			chomp($line);
+			if ($line =~ /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]{2,}\.[a-zA-Z]{2,})/) {
 				my $m = $1;
+				print colored("Found an email address; $m\n", "bright_yellow") if ($verbose);
 				$emails{$m}++;
+			} else {
+				if (($verbose) and ($verbose > 1)) {
+					#print colored("Email regex didn't match line:\n", "bright_blue");
+					#print colored($line."\n", "bright_blue");
+				}
 			}
 		}
 	} else {
@@ -119,7 +115,7 @@ while (scalar(keys(%new_urls)) > 0) {
 		warn colored("There was a problem GET'ing the requested URL.", "red");
 	}
 	print scalar(keys(%emails))." email addresses harvested so far.\n";
-	if ($verbose) {
+	if (($verbose) and ($verbose > 2)) {
 		print color('bright_cyan');
 		print Dumper(\%new_urls);
 		print color('reset');
