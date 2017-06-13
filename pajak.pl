@@ -26,7 +26,7 @@ GetOptions(
 &usage if ($help);
 
 my (%new_urls, %blackouts, %processed_urls, %emails);
-my ($base_url, $maxlinksreached);
+my ($base_url, $maxlinksreached, $search_str);
 
 if ((!defined($linksfile)) or ($linksfile eq '')) { 
 	print "You must specify the file to save links.\n";
@@ -49,6 +49,8 @@ if ((defined($starturl)) and ($starturl ne '')) {
 if ($strict) {
 	my ($scheme, $auth, $path, $query, $frag) = uri_split($starturl);
 	$base_url = $auth;
+	# assume relevant.tld format, for now.
+	$search_str = (split(/\./, $base_url))[0];
 }
 if ($verbose) { print colored("Base URL: $base_url\n", "bold cyan"); }
 
@@ -72,12 +74,17 @@ while (scalar(keys(%new_urls)) > 0) {
 	my $thisurl = (keys(%new_urls))[0];
 	delete($new_urls{$thisurl});
 	if ($strict) { 
-		if (($thisurl =~ m@^http://@) and ($thisurl !~ /$base_url/)) {
-			print color('bold green');
-			print "Base URL not found in this URL.  Skipping...\n";
-			print "$thisurl\n";
-			print color("reset");
-			next;
+		#if (($thisurl =~ m@^http://@) and ($thisurl !~ /$base_url/)) {
+		# try just using the $search_str (this should catch the $base_url matches as well)
+		if (($thisurl =~ m@^https?://@) and ($thisurl !~ /$search_str/)) {
+			if ($verbose) {
+				print color('bold green');
+				#print "Base URL not found in this URL.  Skipping...\n";
+				print "Search string not found in this URL.  Skipping...\n";
+				print "$thisurl\n";
+				print color("reset");
+				next;
+			}
 		}
 	}
 	next if ($thisurl =~ /^\#/);
@@ -92,12 +99,18 @@ while (scalar(keys(%new_urls)) > 0) {
 	print scalar(keys(%new_urls))." to go...\n";
 	my ($scheme, $auth, $path, $query, $frag) = uri_split($thisurl);
 	no warnings;
-	#print colored("S: $scheme ", "green");
-	#print colored("A: $auth ", "yellow");
-	#print colored("P: $path ", "magenta");
-	#print colored("Q: $query ", "red");
-	#print colored("F: $frag\n", "cyan");
+	if (($verbose) && ($verbose > 1)) {
+		print colored("S: $scheme ", "green");
+		print colored("A: $auth ", "yellow");
+		print colored("P: $path ", "magenta");
+		print colored("Q: $query ", "red");
+		print colored("F: $frag\n", "cyan");
+	}
 	$path =~ s@///?@/@g;
+	if (($path =~ m@^/.+@) and ($auth eq "")) {
+		$scheme = "http" unless (defined($scheme));
+		$auth = $base_url;
+	}
 	my $repack = uri_join($scheme, $auth, $path, $query, $frag);
 	use warnings;
 	#print colored("$repack\n", "bright_yellow");
@@ -144,7 +157,7 @@ while (scalar(keys(%new_urls)) > 0) {
 		foreach my $l ( @links ) { $new_urls{$l->url}++; }
 	} else {
 		print colored("HTTP CODE: ".$mech->status." \n", "red");
-		warn colored("There was a problem GET'ing the requested URL.", "red");
+		warn colored("There was a problem GET'ing the requested URL ($repack).", "red");
 	}
 	print scalar(keys(%emails))." email addresses harvested so far.\n";
 	if (($verbose) and ($verbose > 2)) {
