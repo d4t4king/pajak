@@ -79,7 +79,7 @@ while (scalar(keys(%new_urls)) > 0) {
 	}
 	next if ($thisurl =~ /^\#/);
 	next if ($thisurl =~ /javascript/);
-	next if ($thisurl =~ /\.(?:ico|png|jpe?g|gif$/);
+	next if ($thisurl =~ /\.(?:ico|png|jpe?g|gif)$/);
 	### FIX ME!!!
 	# We eventually want to parse PDFs for emails and links,
 	# even if it's just a rudimentary `strings` parse.
