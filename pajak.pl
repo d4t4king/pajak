@@ -94,6 +94,15 @@ while (scalar(keys(%new_urls)) > 0) {
 		# get all the links
 		my @links = $mech->links();
 		if ($verbose) { print "Got ".scalar(@links)." links from URL.\n"; }
+		# try getting mailto links first....
+		my @maillinks = $mech->find_all_links('url_regex' => qr/mailto:\/\//);
+		print colored("Got ".scalar(@maillinks)." emails from mailto: links.\n", "cyan");
+		if (scalar(@maillinks) > 0) {
+			print Dumper($maillinks[0]);
+		#	foreach my $ml ( @maillinks ) {
+		#		$emails{$ml}++;
+		#	}
+		}
 		# get all the emails
 		my @htmllines = split(/(\r\n?|\n)/, $mech->content);
 		print colored("Got ".scalar(@htmllines)." lines after split.\n", "cyan");
@@ -124,16 +133,24 @@ while (scalar(keys(%new_urls)) > 0) {
 }
 
 END {
-	print "In the END block....\n";
-	print "Got ".scalar(keys(%processed_urls))." unique URLs processed.\n";
-	open FILE, ">$linksfile" or die "There was a problem opening the links file ($linksfile) for writing: $!";
-	foreach my $p ( sort keys %processed_urls ) {	print FILE "$p\n"; }
-	close FILE or die "There was a problem closing the links file: $!";
+	print "In the END block....\n" if ($verbose);
+	if (($help) or (!defined($starturl))) {
+		if ($verbose) {
+			print "Help or no/incorrect options specified.\n";
+			print "Just quitting.\n";
+			exit 0;
+		}
+	} else {
+		print "Got ".scalar(keys(%processed_urls))." unique URLs processed.\n";
+		open FILE, ">$linksfile" or die "There was a problem opening the links file ($linksfile) for writing: $!";
+		foreach my $p ( sort keys %processed_urls ) {	print FILE "$p\n"; }
+		close FILE or die "There was a problem closing the links file: $!";
 
-	print "Got ".scalar(keys(%emails))." unique email addresses found.\n";
-	open FILE, ">$mailsfile" or die "There was a problem opening the mails file ($mailsfile) for writing: $!";
-	foreach my $m ( sort keys %emails ) { print FILE "$m\n"; }
-	close FILE or die "There was a problem closing the mails file: $!";
+		print "Got ".scalar(keys(%emails))." unique email addresses found.\n";
+		open FILE, ">$mailsfile" or die "There was a problem opening the mails file ($mailsfile) for writing: $!";
+		foreach my $m ( sort keys %emails ) { print FILE "$m\n"; }
+		close FILE or die "There was a problem closing the mails file: $!";
+	}
 }
 
 ###############################################################################
