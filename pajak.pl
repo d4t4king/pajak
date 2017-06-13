@@ -36,7 +36,11 @@ if ((!defined($mailsfile)) or ($mailsfile eq '')) {
 	&usage;
 }
 if ((defined($starturl)) and ($starturl ne '')) {
-	$new_urls{$starturl}++;
+	if ($starturl !~ /^https?:\/\//) {
+		die colored("You must specify a fully qualified URL (i.e. use 'http://', etc.).", "red");
+	} else {
+		$new_urls{$starturl}++;
+	}
 } else {
 	print "You must specify a starting URL!\n";
 	&usage;
@@ -64,7 +68,6 @@ $mech->agent_alias('Windows Mozilla');
 while (scalar(keys(%new_urls)) > 0) {
 	my $thisurl = (keys(%new_urls))[0];
 	delete($new_urls{$thisurl});
-	next if (exists($processed_urls{$thisurl}));
 	if ($strict) { 
 		if (($thisurl =~ m@^http://@) and ($thisurl !~ /$base_url/)) {
 			print color('bold green');
@@ -76,7 +79,14 @@ while (scalar(keys(%new_urls)) > 0) {
 	}
 	next if ($thisurl =~ /^\#/);
 	next if ($thisurl =~ /javascript/);
+	next if ($thisurl =~ /\.(?:ico|png|jpe?g|gif$/);
+	### FIX ME!!!
+	# We eventually want to parse PDFs for emails and links,
+	# even if it's just a rudimentary `strings` parse.
+	next if ($thisurl =~ /\.[Pp][Dd][Ff]$/);
+	next if (exists($processed_urls{$thisurl}));
 	print "Processing $thisurl\...\n";
+	print scalar(keys(%new_urls))." to go...\n";
 	my ($scheme, $auth, $path, $query, $frag) = uri_split($thisurl);
 	no warnings;
 	#print colored("S: $scheme ", "green");
@@ -91,9 +101,6 @@ while (scalar(keys(%new_urls)) > 0) {
 	eval { $mech->get($repack); };
 	if ($mech->success) {
 		$processed_urls{$repack}++;
-		# get all the links
-		my @links = $mech->links();
-		if ($verbose) { print "Got ".scalar(@links)." links from URL.\n"; }
 		# try getting mailto links first....
 		my @maillinks = $mech->find_all_links('url_regex' => qr/mailto:\/\//);
 		print colored("Got ".scalar(@maillinks)." emails from mailto: links.\n", "cyan");
@@ -119,6 +126,10 @@ while (scalar(keys(%new_urls)) > 0) {
 				}
 			}
 		}
+		# get all the links
+		my @links = $mech->links();
+		print "Got ".scalar(@links)." links from URL.\n" if ($verbose);
+		foreach my $l ( @links ) { $new_urls{$l->url}++; }
 	} else {
 		print colored("HTTP CODE: ".$mech->status." \n", "red");
 		warn colored("There was a problem GET'ing the requested URL.", "red");
