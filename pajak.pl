@@ -10,7 +10,7 @@ use Data::Dumper;
 use Getopt::Long qw( :config no_ignore_case bundling );
 use URI::Split qw( uri_split uri_join );
 
-my ($help, $verbose, $linksfile, $mailsfile, $starturl, $blackout, $count, $strict);
+my ($help, $verbose, $linksfile, $mailsfile, $starturl, $blackout, $count, $strict, $maxlinks);
 GetOptions(
 	'h|help'		=>	\$help,
 	'v|verbose+'	=>	\$verbose,
@@ -20,12 +20,13 @@ GetOptions(
 	'b|blackout=s'	=>	\$blackout,
 	's|starturl=s'	=>	\$starturl,
 	'c|count=s'		=>	\$count,
+	'M|maxlinks=s'	=>	\$maxlinks,
 );
 
 &usage if ($help);
 
 my (%new_urls, %blackouts, %processed_urls, %emails);
-my ($base_url);
+my ($base_url, $maxlinksreached);
 
 if ((!defined($linksfile)) or ($linksfile eq '')) { 
 	print "You must specify the file to save links.\n";
@@ -64,6 +65,8 @@ my $mech = WWW::Mechanize->new(
 	},
 );
 $mech->agent_alias('Windows Mozilla');
+
+$maxlinksreached = 0;
 
 while (scalar(keys(%new_urls)) > 0) {
 	my $thisurl = (keys(%new_urls))[0];
@@ -127,6 +130,13 @@ while (scalar(keys(%new_urls)) > 0) {
 					#print colored($line."\n", "bright_blue");
 				}
 			}
+		}
+		# stop adding new links if/when we reach the specified max
+		if ($maxlinksreached) {
+			next;
+		 } elsif ((defined($maxlinks)) and (scalar(keys(%new_urls)) >= $maxlinks)) {
+			$maxlinksreached = 1;
+			next;
 		}
 		# get all the links
 		my @links = $mech->links();
