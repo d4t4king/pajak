@@ -106,6 +106,8 @@ while (scalar(keys(%new_urls)) > 0) {
 		print colored("Got ".scalar(@maillinks)." emails from mailto: links.\n", "cyan");
 		if (scalar(@maillinks) > 0) {
 			print Dumper($maillinks[0]);
+			print "Press ENTER to continue....\n";
+			readline();
 		#	foreach my $ml ( @maillinks ) {
 		#		$emails{$ml}++;
 		#	}
